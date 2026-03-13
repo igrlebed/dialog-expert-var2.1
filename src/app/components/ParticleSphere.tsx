@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 /**
  * ParticleSphere — fixed full-viewport canvas.
@@ -34,7 +34,7 @@ interface FloatingDot {
 }
 
 const IS_MOBILE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-const PARTICLE_COUNT = IS_MOBILE ? 800 : 2800;
+const PARTICLE_COUNT = IS_MOBILE ? 800 : 1800;
 const FLOATING_COUNT = IS_MOBILE ? 30 : 80;
 const PHI = (1 + Math.sqrt(5)) / 2;
 
@@ -78,6 +78,29 @@ function makeFloatingDots(): FloatingDot[] {
 
 export const ParticleSphere = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const handleLoad = () => {
+      // Delay slightly after window.load to ensure everything is settled
+      setTimeout(() => setIsReady(true), 300);
+    };
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      window.addEventListener('load', handleLoad);
+      return () => window.removeEventListener('load', handleLoad);
+    }
+  }, []);
+
+  if (!isReady) {
+    return null; // Don't render anything until the page is fully loaded
+  }
+
+  return <ParticleCanvas canvasRef={canvasRef} />;
+};
+
+const ParticleCanvas = ({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement> }) => {
   const heroProgressRef = useRef(0);
   const heroElRef = useRef<HTMLElement | null>(null);
   const pageProgressRef = useRef(0);
@@ -100,18 +123,11 @@ export const ParticleSphere = () => {
     // Cache hero element and its dimensions
     const heroEl = document.getElementById("hero-sphere-track");
     heroElRef.current = heroEl;
-    let heroH = 0;
-    let heroTop = 0;
     
     const updateHeroMetrics = () => {
-      if (heroEl) {
-        const rect = heroEl.getBoundingClientRect();
-        heroH = heroEl.offsetHeight - window.innerHeight;
-        heroTop = rect.top + window.scrollY;
-      }
+      // This function can be used to update metrics on resize if needed
     };
     
-    updateHeroMetrics();
     window.addEventListener("resize", updateHeroMetrics);
 
     return () => {
@@ -160,9 +176,7 @@ export const ParticleSphere = () => {
     };
 
     const draw = () => {
-      // 1. Update hero progress without layout thrashing (using cached heroTop/heroH)
-      // Since we can't easily access the variables from the other useEffect, 
-      // we'll just do a cheap calculation here.
+      // 1. Update hero progress without layout thrashing
       const heroEl = heroElRef.current;
       if (heroEl) {
         const rect = heroEl.getBoundingClientRect();
@@ -419,14 +433,12 @@ export const ParticleSphere = () => {
     const onResize = () => { clearTimeout(rt); rt = setTimeout(resize, 80); };
     resize();
 
-    // Wait for initial render to complete before starting animation loop
-    const delayStart = setTimeout(() => {
-      animId = requestAnimationFrame(draw);
-    }, 500);
+    animId = requestAnimationFrame(draw);
+
+
 
     window.addEventListener("resize", onResize);
     return () => {
-      clearTimeout(delayStart);
       cancelAnimationFrame(animId);
       clearTimeout(rt);
       window.removeEventListener("resize", onResize);

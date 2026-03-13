@@ -140,7 +140,7 @@ export const HeroSphere = ({ ready = true }: { ready?: boolean }) => {
               className="flex flex-col items-start lg:items-end gap-6 lg:max-w-[340px] lg:text-right pb-1"
             >
               <p 
-                className="text-[14px] sm:text-[15px] text-white/60 leading-relaxed m-0 uppercase tracking-[0.04em]"
+                className="text-[14px] sm:text-[15px] text-white/80 leading-relaxed m-0 uppercase tracking-[0.04em]"
                 style={{
                   filter: 'drop-shadow(0 4px 12px rgba(5,10,9,0.9)) drop-shadow(0 2px 4px rgba(5,10,9,0.95))',
                 }}
@@ -183,7 +183,7 @@ export const HeroSphere = ({ ready = true }: { ready?: boolean }) => {
                 animate={{ y: [0, 4, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <ChevronDown className="w-3.5 h-3.5 text-white/40" />
+                <ChevronDown className="w-3.5 h-3.5 text-white/50" />
               </motion.div>
             </motion.div>
 
