@@ -33,8 +33,9 @@ interface FloatingDot {
   alpha: number;
 }
 
-const PARTICLE_COUNT = 2800;
-const FLOATING_COUNT = 80;
+const IS_MOBILE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+const PARTICLE_COUNT = IS_MOBILE ? 800 : 2800;
+const FLOATING_COUNT = IS_MOBILE ? 30 : 80;
 const PHI = (1 + Math.sqrt(5)) / 2;
 
 function fibSphere(n: number): [number, number, number][] {
@@ -78,32 +79,51 @@ function makeFloatingDots(): FloatingDot[] {
 export const ParticleSphere = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heroProgressRef = useRef(0);
+  const heroElRef = useRef<HTMLElement | null>(null);
   const pageProgressRef = useRef(0);
   const timeRef = useRef(0);
   const dimRef = useRef({ w: 0, h: 0 });
   const floatingRef = useRef<FloatingDot[]>([]);
 
   const updateScroll = useCallback(() => {
-    const heroEl = document.getElementById("hero-sphere-track");
-    if (heroEl) {
-      const rect = heroEl.getBoundingClientRect();
-      const heroH = heroEl.offsetHeight - window.innerHeight;
-      if (heroH > 0) heroProgressRef.current = clamp01(-rect.top / heroH);
-    }
+    // Only update page progress from window.scrollY (cheap)
     const docH = document.documentElement.scrollHeight - window.innerHeight;
     pageProgressRef.current = docH > 0 ? clamp01(window.scrollY / docH) : 0;
+    
+    // Hero progress calculation moved to the main loop to avoid layout thrashing on scroll event
   }, []);
 
   useEffect(() => {
     window.addEventListener("scroll", updateScroll, { passive: true });
     updateScroll();
-    return () => window.removeEventListener("scroll", updateScroll);
+    
+    // Cache hero element and its dimensions
+    const heroEl = document.getElementById("hero-sphere-track");
+    heroElRef.current = heroEl;
+    let heroH = 0;
+    let heroTop = 0;
+    
+    const updateHeroMetrics = () => {
+      if (heroEl) {
+        const rect = heroEl.getBoundingClientRect();
+        heroH = heroEl.offsetHeight - window.innerHeight;
+        heroTop = rect.top + window.scrollY;
+      }
+    };
+    
+    updateHeroMetrics();
+    window.addEventListener("resize", updateHeroMetrics);
+
+    return () => {
+      window.removeEventListener("scroll", updateScroll);
+      window.removeEventListener("resize", updateHeroMetrics);
+    };
   }, [updateScroll]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false }); // Performance: opaque canvas
     if (!ctx) return;
     let animId = 0;
 
@@ -140,6 +160,16 @@ export const ParticleSphere = () => {
     };
 
     const draw = () => {
+      // 1. Update hero progress without layout thrashing (using cached heroTop/heroH)
+      // Since we can't easily access the variables from the other useEffect, 
+      // we'll just do a cheap calculation here.
+      const heroEl = heroElRef.current;
+      if (heroEl) {
+        const rect = heroEl.getBoundingClientRect();
+        const heroH = heroEl.offsetHeight - window.innerHeight;
+        if (heroH > 0) heroProgressRef.current = clamp01(-rect.top / heroH);
+      }
+
       timeRef.current += 1 / 60;
       const t = timeRef.current;
       const hp = heroProgressRef.current;
@@ -388,9 +418,19 @@ export const ParticleSphere = () => {
     let rt: ReturnType<typeof setTimeout>;
     const onResize = () => { clearTimeout(rt); rt = setTimeout(resize, 80); };
     resize();
-    animId = requestAnimationFrame(draw);
+
+    // Wait for initial render to complete before starting animation loop
+    const delayStart = setTimeout(() => {
+      animId = requestAnimationFrame(draw);
+    }, 500);
+
     window.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(animId); clearTimeout(rt); window.removeEventListener("resize", onResize); };
+    return () => {
+      clearTimeout(delayStart);
+      cancelAnimationFrame(animId);
+      clearTimeout(rt);
+      window.removeEventListener("resize", onResize);
+    };
   }, []);
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { motion, useScroll, useSpring } from "motion/react";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
@@ -6,27 +6,6 @@ import { LazySection } from "./components/LazySection";
 import { SmoothScrollProvider } from "./components/SmoothScroll";
 import { Preloader } from "./components/Preloader";
 import { ParticleSphere } from "./components/ParticleSphere";
-
-/* ── Preconnect for Google Fonts (injected at module load time) ── */
-/* Ideally these belong in HTML <head>, but since we can't modify index.html,
-   we inject them as early as possible at JS module evaluation time.
-   This starts DNS+TLS handshakes for font origins in parallel with rendering. */
-if (typeof document !== "undefined") {
-  const origins = [
-    { href: "https://fonts.googleapis.com", crossorigin: false },
-    { href: "https://fonts.gstatic.com", crossorigin: true },
-  ];
-  const head = document.head;
-  origins.forEach(({ href, crossorigin }) => {
-    if (!head.querySelector(`link[rel="preconnect"][href="${href}"]`)) {
-      const link = document.createElement("link");
-      link.rel = "preconnect";
-      link.href = href;
-      if (crossorigin) link.crossOrigin = "anonymous";
-      head.appendChild(link);
-    }
-  });
-}
 
 /* ── Lazy factories (stable refs — defined outside component) ── */
 const lazyPainPoints = () => import("./components/PainPoints");
@@ -56,8 +35,24 @@ function CursorGlow() {
     const el = glowRef.current;
     if (!el) return;
 
+    let rafId: number;
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const updatePosition = () => {
+      // Smooth interpolation (lerp) for the cursor glow
+      currentX += (targetX - currentX) * 0.15;
+      currentY += (targetY - currentY) * 0.15;
+      
+      el.style.transform = `translate3d(${currentX - 200}px, ${currentY - 200}px, 0)`;
+      rafId = requestAnimationFrame(updatePosition);
+    };
+
     const handleMove = (e: MouseEvent) => {
-      el.style.transform = `translate3d(${e.clientX - 200}px, ${e.clientY - 200}px, 0)`;
+      targetX = e.clientX;
+      targetY = e.clientY;
       el.style.opacity = "1";
     };
 
@@ -68,11 +63,13 @@ function CursorGlow() {
       el.style.opacity = "1";
     };
 
-    window.addEventListener("mousemove", handleMove);
+    rafId = requestAnimationFrame(updatePosition);
+    window.addEventListener("mousemove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
     document.addEventListener("mouseenter", handleEnter);
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("mousemove", handleMove);
       document.removeEventListener("mouseleave", handleLeave);
       document.removeEventListener("mouseenter", handleEnter);
@@ -150,7 +147,11 @@ export default function App() {
         ref={containerRef}
         className="relative min-h-screen bg-[#050a09] font-['Onest','Onest_Fallback',sans-serif] text-white/80 selection:bg-[#00A84F]/20 selection:text-white antialiased"
       >
-        <ParticleSphere />
+        {preloaderDone && (
+          <Suspense fallback={null}>
+            <ParticleSphere />
+          </Suspense>
+        )}
         <CursorGlow />
         <ScrollProgress />
         <Header />

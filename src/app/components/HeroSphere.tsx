@@ -176,14 +176,14 @@ export const HeroSphere = ({ ready = true }: { ready?: boolean }) => {
               className="flex items-center gap-2"
               style={{ opacity: scrollIndicatorOpacity }}
             >
-              <span className="text-[12px] text-white/30 uppercase tracking-[0.15em]">
+              <span className="text-[12px] text-white/60 uppercase tracking-[0.15em]">
                 [scroll]
               </span>
               <motion.div
                 animate={{ y: [0, 4, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <ChevronDown className="w-3.5 h-3.5 text-white/20" />
+                <ChevronDown className="w-3.5 h-3.5 text-white/40" />
               </motion.div>
             </motion.div>
 
@@ -195,10 +195,10 @@ export const HeroSphere = ({ ready = true }: { ready?: boolean }) => {
                 { value: "100%", label: "контроль" },
               ].map((s, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="text-[14px] tracking-[-0.02em] bg-clip-text text-transparent bg-gradient-to-r from-[#00A84F] to-[#34D27B]">
+                  <span className="text-[14px] tracking-[-0.02em] bg-clip-text text-transparent bg-gradient-to-r from-[#00A84F] to-[#34D27B] font-medium">
                     {s.value}
                   </span>
-                  <span className="text-[11px] text-white/30 uppercase tracking-[0.08em]">
+                  <span className="text-[11px] text-white/60 uppercase tracking-[0.08em]">
                     {s.label}
                   </span>
                 </div>
